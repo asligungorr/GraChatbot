@@ -1,0 +1,37 @@
+import sqlite3
+
+# Function to connect to the employee.db file
+def connect_db():
+    """Connect to the SQLite database and ensure the directory exists."""
+    os.makedirs('data', exist_ok=True)  # Ensure the 'data/' directory exists
+    
+    try:
+        db_path = os.path.abspath('data/employee.db')
+        return sqlite3.connect(db_path)
+    except sqlite3.Error as e:
+        return None
+
+# Function to execute a SQL query
+def execute_query(sql_query):
+    """Execute an SQL query on the employee.db database."""
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    try:
+        # Execute the query
+        cursor.execute(sql_query)
+        result = cursor.fetchall()
+        conn.close()
+        return result
+    except sqlite3.Error as e:
+        conn.close()
+        return {"error": str(e)}
+
+def test_db():
+    """Test function to query the employees table."""
+    query = "SELECT * FROM employees LIMIT 5;"  # Fetch the first 5 employees
+    results = execute_query(query)
+    print(results)  # This will print the results of the query
+
+if __name__ == "__main__":
+    test_db()  # Run the test
