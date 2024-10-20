@@ -1,0 +1,39 @@
+# Ignore virtual environments
+myenv/
+.env
+
+# Ignore Python cache files
+__pycache__/
+
+# Ignore Gradio flagged data
+.gradio/flagged/
+
+# Ignore database files
+data/employee.db
+
+# Ignore certificate files
+src/certificate.pem
+
+# Ignore any system-specific files (e.g., VSCode workspace settings)
+.vscode/
+
+# Ignore general logs, temporary files, and test results
+*.log
+*.tmp
+*.out
+*.test
+*.db
+
+# Ignore the 'node_modules' directory if you are using Node.js
+node_modules/
+
+# Ignore Python-specific files
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore macOS specific system files
+.DS_Store
+
+# Ignore JetBrains IDE project files
+.idea/
