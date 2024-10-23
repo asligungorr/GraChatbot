@@ -1,21 +1,37 @@
-import os
-import sqlite3
-import json
-import gradio as gr
-from dotenv import load_dotenv
-import requests
 
-# Load environment variables
-load_dotenv()
+# Import necessary libraries
+import os          # File/directory operations
+import sqlite3     # Database operations
+import json        # JSON handling
+import gradio as gr # Web interface
+from dotenv import load_dotenv  # Environment variable management
+import requests    # HTTP requests
 
-# Database connection
+# Database Connection Function
 def connect_db():
+    # """
+    # Creates database connection with proper error handling
+    # - Creates data directory if it doesn't exist
+    # - Returns SQLite connection object
+    # """
     os.makedirs('data', exist_ok=True)
     db_path = os.path.abspath('data/employee.db')
     print(f"Attempting to connect to database at: {db_path}")
     return sqlite3.connect(db_path)
 
+
+    
+# Query Execution Function
 def execute_query(sql_query):
+    # """
+    # Executes SQL query with comprehensive error handling
+    # - Creates database connection
+    # - Executes query
+    # - Fetches results and column names
+    # - Handles both SQLite-specific and general errors
+    # - Returns tuple of (columns, results)
+    # """
+
     conn = connect_db()
     cursor = conn.cursor()
     try:
@@ -92,8 +108,45 @@ def query_gemini_api(natural_query):
     WHERE SUBSTR(hire_date, 1, 4) = '1986'
     LIMIT 5;
 
+    Database Schema:
+    employees (emp_no, birth_date, first_name, last_name, gender, hire_date)
+    departments (dept_no, dept_name)
+    dept_manager (emp_no, dept_no, from_date, to_date)
+    dept_emp (emp_no, dept_no, from_date, to_date)
+    titles (emp_no, title, from_date, to_date)
+    salaries (emp_no, salary, from_date, to_date)
+    Important Notes:
+    Salary information is only available in the salaries table, not in the employees table.
+    To obtain salary details, you must join the employees and salaries tables using emp_no.
+    When calculating average salary or comparing salaries, always reference the salaries table.
+    To find the most recent salary, use MAX(from_date) in a subquery when joining employees and salaries.
+    Department information can be found in the departments, dept_manager, and dept_emp tables, and they need to be joined via dept_no and emp_no as required.
+    Guidelines for Generating SQL Queries:
+    Use appropriate joins and subqueries when necessary.
+    When asked "who", join the relevant tables and retrieve the full name (first_name and last_name) associated with the emp_no.
+    When asked "what", identify what specific information is being requested (e.g., job title, department name, salary) and join the necessary tables to retrieve that information.
+    When asked "when", ensure to include relevant date fields (e.g., hire_date, from_date, to_date) and specify conditions for date ranges or specific events.
+    When asked "where", determine if it relates to department assignments, employee locations, or other place-related data, and join the relevant tables.
+    When asked "why", attempt to infer the reasoning based on relationships between tables, such as salary changes or departmental shifts.
+    When asked "how", consider the steps or conditions involved in the query (e.g., calculating averages, retrieving maximum values).
+    Additional Considerations:
+    For queries involving the current department of an employee, filter based on the most recent from_date in the dept_emp table.
+    For employees' current title, filter using the most recent from_date in the titles table.
+    If querying for department managers, ensure the dept_manager table is joined using both emp_no and dept_no.
+    
     Please follow these guidelines strictly when generating SQL queries. Ensure to use appropriate joins and subqueries when necessary.
     """
+    ai_configuration = {
+    "model": "gemini",  # The model name
+    "temperature": 0.7,  # Controls randomness, higher values mean more randomness
+    "top_k": 50,         # Limits the possible tokens at each step to the top_k most likely tokens
+    "top_p": 0.9,        # Controls nucleus sampling, where 0.9 keeps the smallest possible set of tokens whose cumulative probability exceeds 90%
+    "safety_settings": {
+        "use_safety_filters": True,  # Enable safety filters
+        "profanity_filter": True,    # Filters profanity
+        "harmful_content_filter": True  # Filters harmful content
+    }
+    }
     
     data = {
         'contents': [
@@ -119,6 +172,18 @@ def query_gemini_api(natural_query):
 
 
 def process_query(natural_query):
+    
+    # """
+    # Main query processing pipeline:
+    # 1. Converts natural language to SQL via Gemini API
+    # 2. Executes SQL query on database
+    # 3. Formats results into human-readable text
+    # 4. Returns dictionary with:
+    #    - Original query
+    #    - Generated SQL
+    #    - Formatted results
+    # """
+    
     sql_query = query_gemini_api(natural_query)
     
     if isinstance(sql_query, dict) and "error" in sql_query:
@@ -139,6 +204,16 @@ def process_query(natural_query):
     }
 
 def format_results(columns, results, query):
+    
+    #   """
+    # Formats database results into natural language
+    # - Handles different result types (single value vs multiple rows)
+    # - Constructs grammatically correct sentences
+    # - Uses appropriate pronouns based on gender
+    # - Combines multiple fields into coherent narratives
+    # - Adds context about result limitations
+    # """
+    
     if columns is None or results is None:
         return "I couldn't find any results for that query."
     
@@ -191,45 +266,18 @@ def format_results(columns, results, query):
     
     return formatted
 
-# # Process user query
-# def process_query(natural_query):
-#     sql_query = query_gemini_api(natural_query)
-    
-#     if isinstance(sql_query, dict) and "error" in sql_query:
-#         return sql_query
-    
-#     columns, db_results = execute_query(sql_query)
-    
-#     if isinstance(db_results, dict) and "error" in db_results:
-#         return db_results
-    
-#     # Format the results into a human-readable response
-#     formatted_results = format_results(columns, db_results)
-    
-#     return {
-#         "natural_query": natural_query,
-#         "sql_query": sql_query,
-#         "results": formatted_results
-#     }
-
-# def format_results(columns, results):
-#     if columns is None or results is None:
-#         return "No results found or an error occurred."
-    
-#     if isinstance(results, dict) and "error" in results:
-#         return f"Error: {results['error']}"
-    
-#     if not results:
-#         return "No results found."
-    
-#     formatted = "Results:\n"
-#     for row in results:
-#         formatted += ", ".join([f"{col}: {val}" for col, val in zip(columns, row)]) + "\n"
-    
-#     return formatted
 
 # Gradio interface
 def chatbot_interface(user_input):
+    
+    # """
+    # Creates web interface for database interaction:
+    # - Takes natural language input
+    # - Returns formatted response
+    # - Handles errors gracefully
+    # - Maintains conversation context
+    # """
+    
     response = process_query(user_input)
     if isinstance(response, dict) and "error" in response:
         return f"Error: {response['error']}"
